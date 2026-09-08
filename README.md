@@ -50,15 +50,28 @@ Run `npm run supabase:check` after setup. This makes read-only checks of the app
 
 The staff portal is available at `/admin`, but it remains locked until you explicitly authorize staff. It has dashboard totals, search, status/position/date filters, pagination, application details, password recovery, email verification, logout, and audited workflow changes. It never displays an SSN, original filename, or storage path.
 
-1. For the already configured project, run `ADMIN_PORTAL_SETUP.sql`, then run `ADMIN_WORKFLOW_SETUP.sql`, in that order. Do not rerun `SUPABASE_SETUP.sql`. Generate the second file with `npm run admin:workflow:prepare` if its migration changes.
+1. For the already configured project, run `ADMIN_PORTAL_SETUP.sql`, then `ADMIN_WORKFLOW_SETUP.sql`, then `ADMIN_PROVISIONING_SETUP.sql`, in that order. Do not rerun `SUPABASE_SETUP.sql`. Regenerate the setup files with their matching `npm run admin:*:prepare` command if a migration changes.
 2. In Supabase Authentication, create an email/password user for each staff member and require email confirmation. Enforce MFA before granting production staff access.
-3. In SQL Editor, retrieve that user's UUID from `auth.users`, then allowlist it. Replace the placeholder before running this statement:
+3. Staff provisioning is deliberately restricted to audited security-definer functions. Do not grant access to `private`, change RLS, or insert into `private.admin_staff` directly. In Supabase SQL Editor, run the following as `postgres`, replacing both placeholders. The actor must already be an active staff user and the target must have a confirmed email:
 
 ```sql
-insert into private.admin_staff (user_id) values ('PASTE-AUTH-USER-UUID-HERE');
+select public.admin_provision_staff(
+  'CURRENT_ACTIVE_ADMIN_AUTH_USER_UUID',
+  'CONFIRMED_NEW_STAFF_AUTH_USER_UUID'
+);
 ```
 
-4. Visit `/admin/login` and sign in with that exact Supabase Auth user. Keep `ADMIN_SESSION_KEY_BASE64` secret and copy it to the deployment environment with the other server-only variables.
+4. Verify the new staff member can sign in at `/admin/login`, view the dashboard, and complete a non-destructive workflow check. Keep the current admin active until this succeeds.
+5. After verification, run the following as `postgres` to deactivate the departing admin. This keeps the Auth account and audit history; it only removes WorkHireDesk staff access. The function refuses self-revocation and removal of the last active staff member.
+
+```sql
+select public.admin_revoke_staff(
+  'VERIFIED_REMAINING_ADMIN_AUTH_USER_UUID',
+  'DEPARTING_ADMIN_AUTH_USER_UUID'
+);
+```
+
+6. Keep `ADMIN_SESSION_KEY_BASE64` secret and copy it to the deployment environment with the other server-only variables.
 
 ### Staff email verification and passwords
 

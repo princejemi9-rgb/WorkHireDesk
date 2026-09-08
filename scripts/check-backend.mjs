@@ -30,7 +30,7 @@ checks.bucketSizeLimit = bucket.data?.file_size_limit === 1048576 ? "ready" : "n
 const expectedTypes = ["application/pdf", "image/jpeg", "image/png", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
 checks.bucketFileTypes = Array.isArray(bucket.data?.allowed_mime_types) && bucket.data.allowed_mime_types.length === expectedTypes.length && expectedTypes.every(type => bucket.data.allowed_mime_types.includes(type)) ? "ready" : "not verified";
 checks.admin_search_applications = schema.data?.paths?.["/rpc/admin_search_applications"] ? "ready" : "not found or inaccessible";
-for (const name of ["submit_job_application", "lookup_application_receipt", "consume_application_rate_limit", "list_orphaned_application_documents", "admin_is_staff", "admin_list_applications", "admin_get_application", "admin_update_application_status", "admin_record_login", "admin_get_document_for_download", "admin_search_applications"]) {
+for (const name of ["submit_job_application", "lookup_application_receipt", "consume_application_rate_limit", "list_orphaned_application_documents", "admin_is_staff", "admin_list_applications", "admin_get_application", "admin_update_application_status", "admin_record_login", "admin_get_document_for_download", "admin_search_applications", "admin_provision_staff", "admin_revoke_staff"]) {
   checks[name] = schema.status === 200 && schema.data?.paths?.[`/rpc/${name}`] ? "ready" : "not found or inaccessible";
 }
 process.stdout.write(JSON.stringify({ checks, note: "No applicant records read or written. Credentials are not displayed." }, null, 2) + "\n");

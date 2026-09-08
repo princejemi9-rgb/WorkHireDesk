@@ -13,6 +13,7 @@
     "supabase:prepare": "node scripts/prepare-supabase.mjs",
     "admin:prepare": "node scripts/prepare-admin-portal.mjs",
     "admin:workflow:prepare": "node scripts/prepare-admin-workflow.mjs",
+    "admin:provisioning:prepare": "node scripts/prepare-admin-provisioning.mjs",
     "supabase:check": "node --env-file=.env.local scripts/check-backend.mjs",
     "reconcile:documents": "node --conditions=react-server --env-file=.env.local --import tsx scripts/reconcile-documents.ts"
   },

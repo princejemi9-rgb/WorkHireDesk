@@ -1,0 +1,45 @@
+{
+  "name": "workhiredesk",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "supabase:prepare": "node scripts/prepare-supabase.mjs",
+    "admin:prepare": "node scripts/prepare-admin-portal.mjs",
+    "admin:workflow:prepare": "node scripts/prepare-admin-workflow.mjs",
+    "supabase:check": "node --env-file=.env.local scripts/check-backend.mjs",
+    "reconcile:documents": "node --conditions=react-server --env-file=.env.local --import tsx scripts/reconcile-documents.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.116.0",
+    "file-type": "22.0.2",
+    "lucide-react": "1.42.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "26.5.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

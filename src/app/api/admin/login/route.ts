@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Admin sign-in failed.", error instanceof Error ? error.message : "Unknown error.");
-    return NextResponse.json({ message: "Unable to sign in." }, { status: 503 });
+    const reason = error instanceof Error && error.message === "Admin portal is not configured." ? "admin_session_configuration" : "server_error";
+    return NextResponse.json({ message: "Unable to sign in.", reason }, { status: 503 });
   }
 }

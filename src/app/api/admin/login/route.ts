@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const response = await fetch(url, { method: "POST", headers: { apikey: config.SUPABASE_SERVICE_ROLE_KEY, "Content-Type": "application/json" }, body: JSON.stringify(parsed.data), signal: AbortSignal.timeout(15_000), cache: "no-store" });
     const session = await response.json().catch(() => null) as { access_token?: string; expires_in?: number; user?: { id?: string; email_confirmed_at?: string | null }; code?: string; message?: string } | null;
     if (!response.ok) {
+      console.error("Supabase Auth staff sign-in rejected.", { status: response.status, code: session?.code ?? "unknown" });
       const unverified = session?.code === "email_not_confirmed" || /email not confirmed/i.test(session?.message ?? "");
       return NextResponse.json({ message: "Unable to sign in.", ...(unverified ? { reason: "verify_email" } : {}) }, { status: unverified ? 403 : 401 });
     }

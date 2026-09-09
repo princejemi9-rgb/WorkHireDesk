@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (!response.ok) {
       console.error("Supabase Auth staff sign-in rejected.", { status: response.status, code: session?.code ?? "unknown" });
       const unverified = session?.code === "email_not_confirmed" || /email not confirmed/i.test(session?.message ?? "");
-      return NextResponse.json({ message: "Unable to sign in.", ...(unverified ? { reason: "verify_email" } : {}) }, { status: unverified ? 403 : 401 });
+      return NextResponse.json({ message: "Unable to sign in.", reason: unverified ? "verify_email" : (session?.code ?? "auth_rejected") }, { status: unverified ? 403 : 401 });
     }
     if (!session?.access_token || !session.user?.id || typeof session.expires_in !== "number") return NextResponse.json({ message: "Unable to sign in." }, { status: 401 });
     if (!session.user.email_confirmed_at) return NextResponse.json({ message: "Verify your email before signing in.", reason: "verify_email" }, { status: 403 });

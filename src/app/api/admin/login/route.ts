@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Unable to sign in.", reason: error ? "staff_check_failed" : "not_staff" }, { status: 403 });
     }
     const { error: auditError } = await supabase.rpc("admin_record_login", { p_user_id: session.user.id });
-    if (auditError) return NextResponse.json({ message: "Unable to sign in." }, { status: 503 });
+    if (auditError) console.error("Admin sign-in audit logging failed.", { code: auditError.code ?? null });
     await setAdminSession({ userId: session.user.id, accessToken: session.access_token, expiresAt: Date.now() + Math.min(session.expires_in, 8 * 60 * 60) * 1000 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

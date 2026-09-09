@@ -16,7 +16,10 @@ const adminConfigSchema = configSchema.extend({ ADMIN_SESSION_KEY_BASE64: z.stri
 
 export function getServerConfig() {
   const result = configSchema.safeParse(process.env);
-  if (!result.success) throw new Error("Application service is not configured.");
+  if (!result.success) {
+    const fields = [...new Set(result.error.issues.map(issue => issue.path.join(".")))].join(", ");
+    throw new Error(`Application service is not configured: ${fields || "unknown field"}.`);
+  }
   const config = result.data;
   if (Buffer.from(config.SSN_ENCRYPTION_KEY_BASE64, "base64").length !== 32) throw new Error("Application service is not configured.");
   if (process.env.NODE_ENV === "production" && (!config.APP_ORIGIN.startsWith("https://") || !config.SUPABASE_URL.startsWith("https://"))) throw new Error("Application service is not configured.");

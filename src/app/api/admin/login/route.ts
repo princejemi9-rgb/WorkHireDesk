@@ -25,5 +25,8 @@ export async function POST(request: Request) {
     if (auditError) return NextResponse.json({ message: "Unable to sign in." }, { status: 503 });
     await setAdminSession({ userId: session.user.id, accessToken: session.access_token, expiresAt: Date.now() + Math.min(session.expires_in, 8 * 60 * 60) * 1000 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
-  } catch { return NextResponse.json({ message: "Unable to sign in." }, { status: 503 }); }
+  } catch (error) {
+    console.error("Admin sign-in failed.", error instanceof Error ? error.message : "Unknown error.");
+    return NextResponse.json({ message: "Unable to sign in." }, { status: 503 });
+  }
 }

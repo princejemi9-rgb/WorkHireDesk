@@ -21,7 +21,10 @@ export async function POST(request: Request) {
     if (!session?.access_token || !session.user?.id || typeof session.expires_in !== "number") return NextResponse.json({ message: "Unable to sign in." }, { status: 401 });
     if (!session.user.email_confirmed_at) return NextResponse.json({ message: "Verify your email before signing in.", reason: "verify_email" }, { status: 403 });
     const supabase = getServiceClient(); const { data: isStaff, error } = await supabase.rpc("admin_is_staff", { p_user_id: session.user.id });
-    if (error || isStaff !== true) return NextResponse.json({ message: "Unable to sign in." }, { status: 403 });
+    if (error || isStaff !== true) {
+      console.error("Supabase staff-access check rejected sign-in.", { code: error?.code ?? null, isStaff: isStaff === true });
+      return NextResponse.json({ message: "Unable to sign in.", reason: error ? "staff_check_failed" : "not_staff" }, { status: 403 });
+    }
     const { error: auditError } = await supabase.rpc("admin_record_login", { p_user_id: session.user.id });
     if (auditError) return NextResponse.json({ message: "Unable to sign in." }, { status: 503 });
     await setAdminSession({ userId: session.user.id, accessToken: session.access_token, expiresAt: Date.now() + Math.min(session.expires_in, 8 * 60 * 60) * 1000 });

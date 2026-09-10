@@ -11,5 +11,5 @@ export const adminFiltersSchema = z.object({
   page: z.number().int().min(0).max(100000).default(0),
 }).refine(value => !value.dateFrom || !value.dateTo || value.dateFrom <= value.dateTo, { message: "Start date must be before the end date." });
 export type AdminFilters = z.infer<typeof adminFiltersSchema>;
-export type ApplicationRow = { id: string; reference_code: string; first_name: string; last_name: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number; pending_documents: number };
+export type ApplicationRow = { id: string; reference_code: string; first_name: string; last_name: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number };
 export type ApplicationSearch = { applications: ApplicationRow[]; total: number; counts: Record<ApplicationStatus | "total", number>; positions: string[] };

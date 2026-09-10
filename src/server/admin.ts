@@ -6,8 +6,8 @@ import type { AdminFilters, ApplicationSearch } from "@/lib/admin-workflow";
 import { z } from "zod";
 
 export type ApplicationStatus = "received" | "reviewing" | "shortlisted" | "rejected";
-export type AdminApplication = { id: string; reference_code: string; first_name: string; last_name: string; email: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number; pending_documents: number };
-export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; previous_employer: string; consent_timestamp: string; documents: { kind: string; scan_status: "pending" | "scanning" | "clean" | "rejected" | "failed"; created_at: string }[] };
+export type AdminApplication = { id: string; reference_code: string; first_name: string; last_name: string; email: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number };
+export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; previous_employer: string; consent_timestamp: string; documents: { kind: string; created_at: string }[] };
 
 export async function requireAdmin() {
   const session = await getAdminSession(); if (!session) redirect("/admin/login");

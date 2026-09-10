@@ -34,7 +34,7 @@ Copy `.env.example` to `.env.local` and replace all placeholders using credentia
 
 Drafts live only in memory and survive back/forward navigation between form steps. Refreshing or leaving the application loses the draft. ID/tax uploads accept PDF/JPEG/PNG; resumes accept PDF/DOCX. Legacy `.doc` is excluded.
 
-Each file is limited to 10 MiB. The browser first requests server-authorized, one-time object paths and signed upload URLs, uploads directly to the private quarantine bucket, then sends only upload metadata to the application server. The server downloads and validates the completed bytes before committing the application. Files remain pending and unavailable to staff until malware scanning marks them clean. Service credentials never reach the browser.
+Each file is limited to 10 MiB. The browser first requests server-authorized, one-time object paths and signed upload URLs, uploads directly to the private bucket, then sends only upload metadata to the application server. The server downloads and validates the completed bytes before committing the application. Validated files are available only to authorized staff through audited 60-second signed download URLs. Service credentials never reach the browser.
 
 ## Supabase setup (manual)
 
@@ -81,7 +81,7 @@ Staff can change only their own password from `/admin/account`. The form verifie
 
 The staff sign-in screen also has **Forgot password?**. Its recovery request always returns the same message whether or not an account exists. The Supabase recovery email points to `/admin/reset-password`; its token stays in the browser URL fragment and is removed before the new password is sent to the server for verification and update.
 
-After the SQL runs, use `npm run supabase:check` again; every `admin_*` function check must report ready. Then sign in with a confirmed, allowlisted staff user and verify search, a status change, password reset, email verification, and a clean-document download in staging. A document only receives a download link after an external scanner safely marks it `clean`; the scanner itself is not in this repository.
+After the SQL runs, use `npm run supabase:check` again; every `admin_*` function check must report ready. Then sign in with a confirmed, allowlisted staff user and verify search, a status change, password reset, email verification, and a validated-document download in staging.
 
 ## Vercel setup (manual)
 
@@ -91,7 +91,7 @@ After the SQL runs, use `npm run supabase:check` again; every `admin_*` function
 4. Enable Vercel system environment variables (`VERCEL=1` is used to select the trusted edge IP header). Production outside Vercel deliberately rejects submissions until its trusted proxy adapter is implemented.
 5. Configure WAF/edge rate limits, restrict deployment/admin access, and disable request-body capture, session replay, and sensitive payload logging in all infrastructure integrations. The application adds no analytics.
 6. Run a staging submission with synthetic data; verify private storage, encrypted SSN, consent timestamp, the receipt and unchanged retry behavior. Verify denied anonymous reads/downloads with actual Supabase credentials. Do not use real applicant information for tests.
-7. Deploy and monitor the private Render scanner before staff downloads are enabled. Follow [the Render scanner deployment guide](docs/RENDER-SCANNER.md). The schema records `pending` by default. The worker promotes a document only after a definitive ClamAV clean verdict; scanner and storage errors are recorded as `failed`. The download endpoint authorizes an active staff session on every request, records the action, and redirects only clean files to 60-second signed attachment URLs.
+7. Verify a staging submission with synthetic documents. Confirm the server rejects spoofed or oversized uploads, the bucket remains private, and an authorized staff download uses a short-lived signed URL. Malware scanning is a future security enhancement; enable it only with an isolated scanner and a new, explicitly reviewed document gate.
 
 No Supabase project, credentials, DNS change, Vercel deployment or external scheduled job is created automatically by this repository.
 

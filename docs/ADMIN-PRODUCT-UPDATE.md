@@ -22,15 +22,11 @@ The detail page receives only the last four digits, decrypted on the server. An 
 
 AES-256-GCM decryption checks the key ID and authenticates the application-bound AAD and tag. The response uses `Cache-Control: no-store, private`. Plaintext exists only in transient UI state; Hide, a 30-second timer, blur, visibility changes, page exit and unmount remove it. No browser storage is used. Recent-login step-up was considered: the existing session has expiry but no trusted authentication-time field, so no guessed recency check was added. Current token validity and membership are checked on every reveal. MFA/recent-auth step-up remains a possible additional deployment control.
 
-## Documents and scanner deployment
+## Documents
 
-Downloads remain blocked unless scan status is exactly `clean`. The existing server route checks Auth and the staff-scoped download RPC, records the download audit event, and creates a 60-second signed download URL. No storage paths appear in application JSON. The browser necessarily sees the temporary signed URL when following the redirect. This is a bearer link usable until expiry; an audit records each link issuance, not every reuse of that same URL within its lifetime.
+The server validates every uploaded object's bytes, MIME type and 10 MiB limit before storing application metadata. Validated documents are available to authorized staff through the existing server route, which checks Auth and the staff-scoped download RPC, records the download audit event, and creates a 60-second signed download URL. No storage paths appear in application JSON. The browser necessarily sees the temporary signed URL when following the redirect. This is a bearer link usable until expiry; an audit records each link issuance, not every reuse of that same URL within its lifetime.
 
-`src/server/clamav.ts` implements a private-network ClamAV `INSTREAM` adapter, and `scripts/scan-documents.ts` processes up to `SCAN_BATCH_SIZE` jobs per run. `docker-compose.scanner.yml` supplies an isolated starting deployment with no public scanner port. A trusted worker claims one job, downloads the private object server-side, invokes the adapter and records the verdict. Unknown verdicts, exceptions and download failures become `failed`, never clean. Claims use row locks, random lease tokens and a ten-minute lease. Expired scanning jobs can be reclaimed, and stale results are rejected. Failed jobs stay blocked for operator investigation; requeue deliberately only after fixing the underlying issue. Scan transitions are persisted in `private.document_scan_events`.
-
-Deploy the supplied Render Blueprint or equivalent isolated worker with a private ClamAV `clamd` service and current signature updates through `freshclam`. The supplied worker processes a batch every 60 seconds. `render.yaml` creates a private ClamAV service and an inbound-isolated background worker; follow [the Render scanner deployment guide](RENDER-SCANNER.md). The ClamAV configuration sets `StreamMaxLength` above 10 MiB, bounded timeouts, archive expansion limits, encrypted-document detection and limit-exceeded detection. Only an explicit complete clean result may return `clean`; scanner errors, unsupported/encrypted content and incomplete scans must not do so. Keep the daemon off public networks and protect worker service credentials. Treat uploaded objects as immutable; never overwrite a previously scanned object key. Monitor pending age, failed results and signature freshness. Validate the worker with EICAR in a disposable staging project before real document access is considered operational.
-
-Primary deployment references: [ClamAV scanning](https://docs.clamav.net/manual/Usage/Scanning.html), [INSTREAM protocol](https://docs.clamav.net/manual/Usage/ClamdProtocol.html), [daemon configuration](https://github.com/Cisco-Talos/clamav/blob/main/etc/clamd.conf.sample).
+Malware scanning is not part of this release. A future scanner must run in isolated infrastructure, scan immutable private objects, and preserve a fail-closed state transition so an unavailable scanner never releases a document. Add it only with a new reviewed migration and staging validation.
 
 ## Synthetic testing
 
@@ -40,7 +36,7 @@ Run `npm.cmd test`, `npm.cmd run typecheck`, `npm.cmd run lint`, `npm.cmd run bu
 
 ## Production blockers
 
-Apply and verify the new live migration; deploy and validate the malware adapter/worker; verify live staff login, SSN decryption with existing keys, audit persistence and signed Storage downloads in staging. Local/synthetic tests alone do not establish production readiness. Final verification results are recorded below after the checks finish.
+Apply and verify the new live migration; verify live staff login, SSN decryption with existing keys, audit persistence and signed Storage downloads in staging. Local/synthetic tests alone do not establish production readiness. Final verification results are recorded below after the checks finish.
 
 ## Files changed
 
@@ -70,9 +66,7 @@ Apply and verify the new live migration; deploy and validate the malware adapter
 - `src/components/admin-notifications.tsx`
 - `src/components/ssn-reveal.tsx`
 - `src/server/admin-api.ts`
-- `src/server/scanner.ts`
 - `supabase/migrations/202609100006_admin_product_updates.sql`
 - `tests/e2e/admin-product.spec.ts`
-- `tests/scanner.test.ts`
 
 The pre-existing `.vercel` ignore and `.codex/` content were preserved; only the synthetic build-directory ignore was added to `.gitignore`.

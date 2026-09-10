@@ -23,7 +23,7 @@ test("Postgres migrations deny applicant access, atomically persist records and 
       create policy existing_broad_policy on storage.objects for all to anon, authenticated using (true) with check (true);
     `);
     const setup = await readFile("SUPABASE_SETUP.sql", "utf8");
-    for (const migration of ["202609070001_application_intake.sql", "202609070002_document_reconciliation.sql", "202609080003_admin_portal.sql", "202609080004_admin_workflow_and_documents.sql", "202609080005_admin_provisioning.sql", "202609100006_admin_product_updates.sql"]) {
+    for (const migration of ["202609070001_application_intake.sql", "202609070002_document_reconciliation.sql", "202609080003_admin_portal.sql", "202609080004_admin_workflow_and_documents.sql", "202609080005_admin_provisioning.sql", "202609100006_admin_product_updates.sql", "202609100007_direct_quarantine_uploads.sql", "202609100008_validated_document_release.sql"]) {
       assert.ok(setup.includes((await readFile(`supabase/migrations/${migration}`, "utf8")).trim()), "Regenerate the setup file when a migration changes.");
     }
     await db.exec(setup);
@@ -44,7 +44,7 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     assert.deepEqual((await submit()).rows[0].receipt, { ...result, created: false });
     await assert.rejects(submit(id, "b".repeat(64)), /Submission conflict/);
     assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from public.job_applications")).rows[0].total, 1);
-    assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from private.application_documents where scan_status = 'pending'")).rows[0].total, 3);
+    assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from private.application_documents where scan_status = 'validated'")).rows[0].total, 3);
 
     const invalidId = randomUUID();
     const invalidDocs = docs.map(doc => ({ ...doc, object_key: `${invalidId}/${randomUUID()}`, size_bytes: 20_000_000 }));
@@ -69,8 +69,6 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     assert.equal((await db.query<{ active: boolean }>("select active from private.admin_staff where user_id=$1", [staffId])).rows[0].active, false);
     await db.query("select public.admin_provision_staff($1, $2)", [outsider, staffId]);
     await assert.rejects(db.query("select public.admin_get_application($1,$2)", [unconfirmed, id]), /Not authorized/);
-    await assert.rejects(db.query("select public.admin_get_document_for_download($1,$2,'resume')", [staffId, id]), /Document unavailable/);
-    await db.query("update private.application_documents set scan_status='clean' where application_id=$1 and kind='resume'", [id]);
     const download = await db.query<{ path: string }>("select public.admin_get_document_for_download($1,$2,'resume') as path", [staffId, id]);
     assert.equal(download.rows[0].path, docs[2].object_key);
     await assert.rejects(db.query("select public.admin_get_document_for_download($1,$2,'resume')", [unconfirmed, id]), /Not authorized/);
@@ -100,10 +98,6 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     await db.query("select public.admin_ssn_envelope($1,$2,true)",[staffId,id]);
     const revealEvents=await db.query<{metadata:unknown}>("select metadata from private.admin_audit_events where action='ssn_revealed'");
     assert.deepEqual(revealEvents.rows,[{metadata:{}}]);
-    const job=(await db.query<{job:{id:string;token:string}}>("select public.claim_document_scan() job")).rows[0].job;
-    await assert.rejects(db.query("select public.complete_document_scan($1,$2,'clean')",[job.id,randomUUID()]),/Invalid or expired/);
-    await db.query("select public.complete_document_scan($1,$2,'failed')",[job.id,job.token]);
-    await assert.rejects(db.query("select public.complete_document_scan($1,$2,'clean')",[job.id,job.token]),/Invalid or expired/);
     const noCvId=randomUUID();
     await submit(noCvId,fingerprint,docs.slice(0,2).map(d=>({...d,object_key:`${noCvId}/${randomUUID()}`})));
     const missingId=randomUUID();
@@ -118,7 +112,6 @@ test("Postgres migrations deny applicant access, atomically persist records and 
       await db.exec(`set role ${role}`);
       await assert.rejects(db.query("select public.admin_ssn_envelope($1,$2,true)",[staffId,id]), /permission denied/);
       await assert.rejects(db.query("select public.admin_notifications($1)",[staffId]), /permission denied/);
-      await assert.rejects(db.query("select public.claim_document_scan()"), /permission denied/);
       await assert.rejects(db.query("select * from public.job_applications"), /permission denied/);
       await assert.rejects(db.query("select * from private.application_secrets"), /permission denied/);
       await assert.rejects(db.query("select public.consume_application_rate_limit($1)", ["d".repeat(64)]), /permission denied/);

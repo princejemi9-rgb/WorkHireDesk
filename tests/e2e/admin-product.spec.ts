@@ -9,10 +9,8 @@ test('authorized applicant detail, notifications, and transient SSN reveal',asyn
  await page.goto(`/admin/applications/${id}`);
  await expect(page.getByRole('heading',{name:'Synthetic Applicant'})).toBeVisible();
  await expect(page.getByText('•••-••-6789')).toBeVisible();
- await expect(page.getByText('Pending scan',{exact:true})).toBeVisible();
- await expect(page.getByText('Scanning',{exact:true})).toBeVisible();
- await expect(page.getByText('Scan failed',{exact:true})).toBeVisible();
- await expect(page.getByRole('link',{name:'Download'})).toHaveCount(1);
+ await expect(page.getByText(/Validated files are available only/)).toBeVisible();
+ await expect(page.getByRole('link',{name:'Download'})).toHaveCount(4);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  page.once('dialog',d=>d.dismiss());
  await page.getByRole('button',{name:'Reveal SSN'}).click();
@@ -32,7 +30,7 @@ test('authorized applicant detail, notifications, and transient SSN reveal',asyn
  await expect(page.getByText('123-45-6789')).toBeVisible();
  await page.clock.fastForward(31000);
  await expect(page.getByText('123-45-6789')).toHaveCount(0);
- const blocked=await context.request.get(`/api/admin/applications/${id}/documents/idFront`);expect(blocked.status()).toBe(404);
+ const front=await context.request.get(`/api/admin/applications/${id}/documents/idFront`,{maxRedirects:0});expect(front.status()).toBe(307);
  const download=await context.request.get(`/api/admin/applications/${id}/documents/resume`,{maxRedirects:0});expect(download.status()).toBe(307);expect(download.headers()['cache-control']).toContain('no-store');
  const r=await context.request.post(`/api/admin/applications/${id}/ssn`,{headers:{origin:'http://localhost:4320','x-confirm-ssn-reveal':'true'}});
  expect(r.status()).toBe(200);expect(r.headers()['cache-control']).toContain('no-store');

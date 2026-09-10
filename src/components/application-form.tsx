@@ -71,10 +71,12 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
     setPending(true);
     setSubmitError("");
     try {
-      const body = new FormData();
-      body.set("application", JSON.stringify(finalData.data));
-      for (const name of documentNames) if (app.files[name]) body.set(name, app.files[name]!, name === "resume" ? "resume" : "document");
-      const response = await fetch("/api/applications", { method: "POST", body, credentials: "same-origin", cache: "no-store" });
+      const requested = documentNames.flatMap(name => app.files[name] ? [{ kind: name, mimeType: app.files[name]!.type, size: app.files[name]!.size }] : []);
+      const preparation = await fetch("/api/applications/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId, documents: requested }), credentials: "same-origin", cache: "no-store" });
+      const prepared: { uploads?: { kind: DocumentName; objectKey: string; uploadUrl: string; mimeType: string; size: number }[] } = await preparation.json();
+      if (!preparation.ok || !prepared.uploads || prepared.uploads.length !== requested.length) throw new Error("Upload preparation failed.");
+      await Promise.all(prepared.uploads.map(upload => fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": upload.mimeType, "x-upsert": "false" }, body: app.files[upload.kind]! }).then(response => { if (!response.ok) throw new Error("Upload failed."); })));
+      const response = await fetch("/api/applications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application: finalData.data, uploads: prepared.uploads.map(({ kind, objectKey, mimeType, size }) => ({ kind, objectKey, mimeType, size })) }), credentials: "same-origin", cache: "no-store" });
       const result: { reference?: string; message?: string } = await response.json();
       if (!response.ok || !result.reference || !/^WHD-[A-F0-9]{8}$/.test(result.reference)) {
         setSubmitError(response.status === 429 ? "Too many attempts. Please wait 15 minutes before trying again." : "We couldn't submit your application. Please try again.");
@@ -119,7 +121,7 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
           <div className="field-grid employment-fields">{field("positionDesired", "Position Desired", { placeholder: "e.g. Customer Support Specialist", autoComplete: "off", maxLength: "150" })}{field("previousEmployer", "Previous Employer", { placeholder: "Company name, or N/A if none", autoComplete: "organization", maxLength: "150" })}</div>
           <div className="section-divider" />
           <div className="section-heading"><div><h3>Supporting documents</h3><p>Add your resume and any relevant tax documentation.</p></div></div>
-          <FileUploadField name="resume" label="CV / Resume" file={app.files.resume} error={errors.resume} disabled={pending} onChange={file => updateFile("resume", file)} />
+          <FileUploadField name="resume" label="CV / Resume" optional file={app.files.resume} error={errors.resume} disabled={pending} onChange={file => updateFile("resume", file)} />
           <div className="tax-upload"><FileUploadField name="taxDocument" label="W-2 or 1099" optional file={app.files.taxDocument} error={errors.taxDocument} disabled={pending} onChange={file => updateFile("taxDocument", file)} /><p className="field-hint"><LockKeyhole size={12} /> Tax documents are sensitive and stored privately. This upload is optional.</p></div>
           <div className="submission-note"><ShieldIcon /><p><strong>Ready when you are.</strong><br />Please review your details before submitting. Your information will be handled according to the privacy notice you acknowledged.</p></div>
         </>}

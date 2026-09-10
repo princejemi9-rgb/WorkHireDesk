@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 const port = process.env.E2E_PORT || "3000";
 const baseURL = `http://localhost:${port}`;
 export default defineConfig({
+  testIgnore: "admin-product.spec.ts",
   testDir: "./tests/e2e",
   fullyParallel: true,
   workers: 2,

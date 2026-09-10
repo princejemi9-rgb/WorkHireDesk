@@ -34,7 +34,7 @@ Copy `.env.example` to `.env.local` and replace all placeholders using credentia
 
 Drafts live only in memory and survive back/forward navigation between form steps. Refreshing or leaving the application loses the draft. ID/tax uploads accept PDF/JPEG/PNG; resumes accept PDF/DOCX. Legacy `.doc` is excluded.
 
-Each file is limited to 1 MiB because the current server-verified multipart design must stay below Vercel's 4.5 MB Function request limit. Phone photos regularly exceed this limit, so this is a launch blocker for a public application. Do not simply raise the number: replace the multipart endpoint with an authenticated, short-lived direct private-upload/quarantine flow that still verifies the completed object server-side before submission. Until then, instruct applicants to use a PDF or compressed image under 1 MiB and do not claim universal phone-photo support.
+Each file is limited to 10 MiB. The browser first requests server-authorized, one-time object paths and signed upload URLs, uploads directly to the private quarantine bucket, then sends only upload metadata to the application server. The server downloads and validates the completed bytes before committing the application. Files remain pending and unavailable to staff until malware scanning marks them clean. Service credentials never reach the browser.
 
 ## Supabase setup (manual)
 

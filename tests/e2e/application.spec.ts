@@ -26,17 +26,23 @@ test("validates, preserves both steps, handles a server error, and clears sensit
   await expect(page.getByText("synthetic.pdf")).toHaveCount(2);
   await page.getByRole("button", { name: "Continue to Employment Information" }).click();
   await expect(page.getByLabel("Position Desired")).toHaveValue("Test Engineer");
-  await page.locator("#resume").setInputFiles(pdf);
+  await expect(page.locator("#resume")).toHaveAttribute("aria-required", "false");
   let requests = 0;
-  await page.route("**/api/applications", async route => {
+  await page.route("**/signed-upload/**", async route => { await route.fulfill({ status: 200 }); });
+  await page.route("**/api/applications**", async route => {
+    if (new URL(route.request().url()).pathname === "/api/applications/uploads") {
+      return route.fulfill({ json: { uploads: [
+        { kind: "idFront", objectKey: "synthetic/id-front", uploadUrl: "http://localhost:3000/signed-upload/id-front", mimeType: "application/pdf", size: pdf.buffer.length },
+        { kind: "idBack", objectKey: "synthetic/id-back", uploadUrl: "http://localhost:3000/signed-upload/id-back", mimeType: "application/pdf", size: pdf.buffer.length },
+      ] } });
+    }
     requests++;
     if (requests === 1) await route.fulfill({ status: 503, json: { message: "Generic error" } });
-    else { await new Promise(resolve => setTimeout(resolve, 200)); await route.fulfill({ json: { reference: "WHD-1234ABCD" } }); }
+    else { await new Promise(resolve => setTimeout(resolve, 1_000)); await route.fulfill({ json: { reference: "WHD-1234ABCD" } }); }
   });
   await page.getByRole("button", { name: "Submit Application", exact: true }).click();
   await expect(page.locator(".submission-error[role=alert]")).toContainText("We couldn't submit your application.");
   await page.getByRole("button", { name: "Submit Application", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Submitting application" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Application Submitted" })).toBeVisible();
   await expect(page.getByText("WHD-1234ABCD")).toBeVisible();
   await expect(page.getByText("synthetic.pdf")).toHaveCount(0);

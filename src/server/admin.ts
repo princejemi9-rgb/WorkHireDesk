@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export type ApplicationStatus = "received" | "reviewing" | "shortlisted" | "rejected";
 export type AdminApplication = { id: string; reference_code: string; first_name: string; last_name: string; email: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number; pending_documents: number };
-export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; previous_employer: string; consent_timestamp: string; documents: { kind: string; scan_status: "pending" | "clean" | "rejected"; created_at: string }[] };
+export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; previous_employer: string; consent_timestamp: string; documents: { kind: string; scan_status: "pending" | "scanning" | "clean" | "rejected" | "failed"; created_at: string }[] };
 
 export async function requireAdmin() {
   const session = await getAdminSession(); if (!session) redirect("/admin/login");
@@ -33,4 +33,16 @@ export async function searchApplications(userId: string, filters: AdminFilters):
   });
   if (error || !data || !Array.isArray(data.applications)) throw new Error("Unable to load applications.");
   return data as ApplicationSearch;
+}
+
+export async function getIdentitySummary(userId:string,id:string) {
+ const {decryptSsn}=await import("./encryption");const {getServerConfig}=await import("./config");
+ const {data,error}=await getServiceClient().rpc("admin_ssn_envelope",{p_user_id:userId,p_application_id:id,p_reveal:false});
+ if(error || !data)return "XXXX";
+ try {const c=getServerConfig();return decryptSsn(data,id,c.SSN_ENCRYPTION_KEY_BASE64,c.SSN_ENCRYPTION_KEY_ID).slice(-4);}catch{return "XXXX";}
+}
+export async function getApplicationActivity(userId:string,id:string) {
+ const {data,error}=await getServiceClient().rpc("admin_application_activity",{p_user_id:userId,p_application_id:id});
+ if(error)throw new Error("Unable to load audit history.");
+ return data as {staff_user_id:string;action:string;created_at:string}[];
 }

@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createDecipheriv, randomBytes, randomUUID } from "node:crypto";
-import { personalSchema, employmentSchema, fileError, MAX_FILE_SIZE, MAX_REQUEST_SIZE } from "../src/validation/application";
-import { encryptSsn } from "../src/server/encryption";
+import { personalSchema, employmentSchema, fileError, MAX_FILE_SIZE } from "../src/validation/application";
+import { encryptSsn, decryptSsn } from "../src/server/encryption";
 import { inspectFile } from "../src/server/files";
-import { isSameOrigin, readLimitedFormData } from "../src/server/request";
+import { isSameOrigin } from "../src/server/request";
 
 const personal = { firstName: "Test", lastName: "Applicant", dateOfBirth: "1990-01-15", address: "Synthetic test address", email: "applicant@example.com", phone: "(202) 555-0123", ssn: "123-45-6789", consent: true };
 test("shared schemas reject invalid dates, consent, contact details and SSNs", () => {
@@ -38,16 +38,29 @@ test("uploads enforce size, actual format, and optional tax documentation", asyn
   const pdf = new File(["%PDF-1.4\n% synthetic format fixture\n%%EOF"], "fixture.pdf", { type: "application/pdf" });
   assert.equal((await inspectFile(pdf, "idFront"))?.mime, "application/pdf");
   assert.equal(await inspectFile(undefined, "taxDocument"), undefined);
-  assert.ok(fileError(undefined, "resume"));
+  assert.equal(fileError(undefined, "resume"), undefined);
+  assert.equal(await inspectFile(undefined, "resume"), undefined);
+  assert.ok(fileError(undefined, "idFront"));
+  assert.ok(fileError(undefined, "idBack"));
+  assert.equal(MAX_FILE_SIZE, 10 * 1024 * 1024);
   assert.ok(fileError(new File([new Uint8Array(MAX_FILE_SIZE + 1)], "large.pdf", { type: "application/pdf" }), "resume"));
   await assert.rejects(inspectFile(new File(["<script>invalid</script>"], "fake.pdf", { type: "application/pdf" }), "idFront"));
   await assert.rejects(inspectFile(new File(["%PDF-1.4\n"], "fake.png", { type: "image/png" }), "idBack"));
 });
 
-test("request guard rejects foreign/missing origins and caps streamed bodies", async () => {
+test("request guard rejects foreign/missing origins", () => {
   assert.equal(isSameOrigin(new Request("https://example.com", { headers: { origin: "https://example.com" } }), "https://example.com"), true);
   assert.equal(isSameOrigin(new Request("https://example.com", { headers: { origin: "https://attacker.example" } }), "https://example.com"), false);
   assert.equal(isSameOrigin(new Request("https://example.com"), "https://example.com"), false);
-  const tooLarge = new Request("https://example.com", { method: "POST", body: new Uint8Array(MAX_REQUEST_SIZE + 1), headers: { "content-type": "multipart/form-data; boundary=test" } });
-  await assert.rejects(readLimitedFormData(tooLarge));
+});
+
+test("production SSN decryptor authenticates key, application, ciphertext and tag",()=>{
+ const key=randomBytes(32).toString("base64"), id=randomUUID();
+ const envelope=encryptSsn(personal.ssn,id,key,"v1");
+ assert.equal(decryptSsn(envelope,id,key,"v1"),"123456789");
+ assert.throws(()=>decryptSsn(envelope,randomUUID(),key,"v1"));
+ assert.throws(()=>decryptSsn(envelope,id,randomBytes(32).toString("base64"),"v1"));
+ assert.throws(()=>decryptSsn(envelope,id,key,"v2"));
+ assert.throws(()=>decryptSsn({...envelope,tag:randomBytes(16).toString("base64")},id,key,"v1"));
+ assert.throws(()=>decryptSsn({...envelope,ciphertext:randomBytes(9).toString("base64")},id,key,"v1"));
 });

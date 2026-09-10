@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-export const MAX_FILE_SIZE = 1024 * 1024;
-export const MAX_REQUEST_SIZE = 4 * MAX_FILE_SIZE + 64 * 1024;
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 export const identityTypes = ["application/pdf", "image/jpeg", "image/png"];
 export const resumeTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
 export const documentNames = ["idFront", "idBack", "resume", "taxDocument"] as const;
@@ -36,8 +35,8 @@ export type EmploymentValues = z.infer<typeof employmentSchema>;
 export type ApplicationValues = PersonalValues & EmploymentValues;
 
 export function fileError(file: File | undefined, name: DocumentName): string | undefined {
-  if (!file || file.size === 0) return name === "taxDocument" ? undefined : "Please select a file.";
-  if (file.size > MAX_FILE_SIZE) return "Choose a file smaller than 1 MB.";
+  if (!file || file.size === 0) return name === "taxDocument" || name === "resume" ? undefined : "Please select a file.";
+  if (file.size > MAX_FILE_SIZE) return "Choose a file smaller than 10 MB.";
   const types = name === "resume" ? resumeTypes : identityTypes;
   if (!types.includes(file.type)) return name === "resume" ? "Choose a PDF or DOCX file." : "Choose a PDF, JPG, or PNG file.";
 }

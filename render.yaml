@@ -1,0 +1,36 @@
+services:
+  # No public URL: only same-workspace services in this region can reach clamd.
+  - type: pserv
+    name: workhiredesk-clamav
+    runtime: docker
+    region: frankfurt
+    plan: 1c-2g
+    dockerfilePath: docker/clamav.Dockerfile
+    autoDeploy: false
+    maxShutdownDelaySeconds: 300
+
+  # A Render background worker has no public or private inbound address.
+  - type: worker
+    name: workhiredesk-document-scanner
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    dockerfilePath: docker/scanner.Dockerfile
+    autoDeploy: false
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CLAMD_HOST
+        fromService:
+          name: workhiredesk-clamav
+          type: pserv
+          property: host
+      - key: CLAMD_PORT
+        value: "3310"
+      - key: SCAN_BATCH_SIZE
+        value: "10"
+      - key: SCAN_INTERVAL_MS
+        value: "60000"

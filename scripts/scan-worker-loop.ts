@@ -1,14 +1,11 @@
-import { scanWithClamAv } from "../src/server/clamav";
-import { scanNextDocument } from "../src/server/scanner";
+import { runDocumentScanBatch } from "./scan-documents";
 
 const batchSize = Number(process.env.SCAN_BATCH_SIZE ?? "10");
 const intervalMs = Number(process.env.SCAN_INTERVAL_MS ?? "60000");
 if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100 || !Number.isInteger(intervalMs) || intervalMs < 10_000 || intervalMs > 3_600_000) throw new Error("Invalid scanner worker configuration.");
 
 async function runBatch() {
-  let processed = 0;
-  while (processed < batchSize && await scanNextDocument({ scan: scanWithClamAv })) processed++;
-  return processed;
+  return runDocumentScanBatch(batchSize);
 }
 
 async function main() {

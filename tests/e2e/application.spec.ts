@@ -18,14 +18,14 @@ test("validates, preserves both steps, handles a server error, and clears sensit
   await page.locator("#consent").check();
   await page.getByRole("button", { name: "Continue to Employment Information" }).click();
   await expect(page).toHaveURL(/\/apply\/employment$/);
-  await page.getByLabel("Position Desired").fill("Test Engineer");
-  await page.getByLabel("Previous Employer").fill("N/A");
+  await expect(page.getByLabel("Position Desired (Optional)")).not.toHaveAttribute("required");
+  await expect(page.getByLabel("Previous Employer (Optional)")).not.toHaveAttribute("required");
   await page.getByRole("button", { name: "Back to Personal Information" }).click();
   await expect(page.getByLabel("First Name", { exact: false })).toHaveValue("Synthetic");
   await expect(page.getByLabel("Social Security Number")).toHaveValue("123-45-6789");
   await expect(page.getByText("synthetic.pdf")).toHaveCount(2);
   await page.getByRole("button", { name: "Continue to Employment Information" }).click();
-  await expect(page.getByLabel("Position Desired")).toHaveValue("Test Engineer");
+  await expect(page.getByLabel("Position Desired (Optional)")).toHaveValue("");
   await expect(page.locator("#resume")).toHaveAttribute("aria-required", "false");
   let requests = 0;
   await page.route("**/signed-upload/**", async route => { await route.fulfill({ status: 200 }); });

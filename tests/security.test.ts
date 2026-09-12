@@ -13,7 +13,9 @@ test("shared schemas reject invalid dates, consent, contact details and SSNs", (
     assert.equal(personalSchema.safeParse({ ...personal, ...changes }).success, false);
   }
   assert.equal(employmentSchema.safeParse({ positionDesired: "Engineer", previousEmployer: "N/A" }).success, true);
-  assert.equal(employmentSchema.safeParse({ positionDesired: "", previousEmployer: "" }).success, false);
+  assert.equal(employmentSchema.safeParse({ positionDesired: "", previousEmployer: "" }).success, true);
+  assert.equal(employmentSchema.safeParse({ positionDesired: "x".repeat(151), previousEmployer: "" }).success, false);
+  assert.equal(employmentSchema.safeParse({ positionDesired: "", previousEmployer: "x".repeat(151) }).success, false);
 });
 
 test("AES-GCM uses distinct nonces and binds ciphertext to the application", () => {

@@ -93,7 +93,7 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
   }
 
   if (checkingStep) return <div className="application-card loading-card" role="status">Preparing your application…</div>;
-  const field = (name: keyof ApplicationValues, label: string, extra: Record<string, string> = {}) => <FormField key={name} id={name} name={name} label={label} value={String(app.values[name])} onChange={event => update(name, event.target.value)} error={errors[name]} required disabled={pending} {...extra} />;
+  const field = (name: keyof ApplicationValues, label: string, extra: Record<string, string> = {}, required = true) => <FormField key={name} id={name} name={name} label={label} value={String(app.values[name])} onChange={event => update(name, event.target.value)} error={errors[name]} required={required} disabled={pending} {...extra} />;
   return <article className="application-card">
     <div className="card-heading"><div><div className="card-kicker">LET’S GET TO KNOW YOU</div><h2>Job Application</h2><p>Complete the information below to submit your application.</p></div><span className="step-count">Step {step} of 2</span></div>
     <ProgressStepper step={step} />
@@ -118,7 +118,7 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
           <div className="consent-field"><label><input id="consent" type="checkbox" checked={app.values.consent} onChange={event => update("consent", event.target.checked)} required aria-invalid={!!errors.consent} aria-describedby={errors.consent ? "consent-error" : undefined} /><span>{consentText} <span className="required">*</span></span></label>{errors.consent && <p id="consent-error" className="field-error">{errors.consent}</p>}</div>
         </> : <>
           <div className="completed-note"><span><Check size={16} /> Personal information complete</span><button type="button" disabled={pending} onClick={() => router.push("/apply")}>Edit details</button></div>
-          <div className="field-grid employment-fields">{field("positionDesired", "Position Desired", { placeholder: "e.g. Customer Support Specialist", autoComplete: "off", maxLength: "150" })}{field("previousEmployer", "Previous Employer", { placeholder: "Company name, or N/A if none", autoComplete: "organization", maxLength: "150" })}</div>
+          <div className="field-grid employment-fields">{field("positionDesired", "Position Desired (Optional)", { placeholder: "e.g. Customer Support Specialist", autoComplete: "off", maxLength: "150" }, false)}{field("previousEmployer", "Previous Employer (Optional)", { placeholder: "Company name, or N/A if none", autoComplete: "organization", maxLength: "150" }, false)}</div>
           <div className="section-divider" />
           <div className="section-heading"><div><h3>Supporting documents</h3><p>Add your resume and any relevant tax documentation.</p></div></div>
           <FileUploadField name="resume" label="CV / Resume" optional file={app.files.resume} error={errors.resume} disabled={pending} onChange={file => updateFile("resume", file)} />

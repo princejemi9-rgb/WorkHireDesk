@@ -7,6 +7,7 @@ export const documentNames = ["idFront", "idBack", "resume", "taxDocument"] as c
 export type DocumentName = typeof documentNames[number];
 
 const text = (label: string, max = 100) => z.string().trim().min(1, `${label} is required.`).max(max, `${label} is too long.`).refine(v => !/[\u0000-\u001f\u007f]/.test(v), "Please remove unsupported characters.");
+const optionalText = (label: string, max = 100) => z.string().trim().max(max, `${label} is too long.`).refine(v => !/[\u0000-\u001f\u007f]/.test(v), "Please remove unsupported characters.");
 export const personalSchema = z.object({
   firstName: text("First name"),
   lastName: text("Last name"),
@@ -26,8 +27,8 @@ export const personalSchema = z.object({
   consent: z.boolean().refine(v => v, "Please acknowledge the privacy notice to continue."),
 });
 export const employmentSchema = z.object({
-  positionDesired: text("Position desired", 150),
-  previousEmployer: text("Previous employer", 150),
+  positionDesired: optionalText("Position desired", 150),
+  previousEmployer: optionalText("Previous employer", 150),
 });
 export const finalSubmissionSchema = personalSchema.extend(employmentSchema.shape).extend({ submissionId: z.uuid() });
 export type PersonalValues = z.infer<typeof personalSchema>;

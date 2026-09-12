@@ -75,17 +75,17 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
       const preparation = await fetch("/api/applications/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId, documents: requested }), credentials: "same-origin", cache: "no-store" });
       const prepared: { uploads?: { kind: DocumentName; objectKey: string; uploadUrl: string; mimeType: string; size: number }[] } = await preparation.json();
       if (!preparation.ok || !prepared.uploads || prepared.uploads.length !== requested.length) throw new Error("Upload preparation failed.");
-      await Promise.all(prepared.uploads.map(upload => fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": upload.mimeType, "x-upsert": "false" }, body: app.files[upload.kind]! }).then(response => { if (!response.ok) throw new Error("Upload failed."); })));
+      await Promise.all(prepared.uploads.map(upload => fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": upload.mimeType, "x-upsert": "false" }, body: app.files[upload.kind]! }).then(response => { if (!response.ok) throw new Error("upload"); }).catch(() => { throw new Error("upload"); })));
       const response = await fetch("/api/applications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application: finalData.data, uploads: prepared.uploads.map(({ kind, objectKey, mimeType, size }) => ({ kind, objectKey, mimeType, size })) }), credentials: "same-origin", cache: "no-store" });
-      const result: { reference?: string; message?: string } = await response.json();
+      const result: { reference?: string; message?: string; errorId?: string } = await response.json();
       if (!response.ok || !result.reference || !/^WHD-[A-F0-9]{8}$/.test(result.reference)) {
-        setSubmitError(response.status === 429 ? "Too many attempts. Please wait 15 minutes before trying again." : "We couldn't submit your application. Please try again.");
+        setSubmitError(response.status === 429 ? "Too many attempts. Please wait 15 minutes before trying again." : submissionMessage(result.errorId));
         return;
       }
       app.clear(result.reference);
       router.replace("/apply/success");
-    } catch {
-      setSubmitError("We couldn't submit your application. Please try again.");
+    } catch (caught) {
+      setSubmitError(caught instanceof Error && caught.message === "upload" ? "We couldn't upload one of your documents. Please try again." : "We couldn't submit your application. Please try again.");
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -131,6 +131,10 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
       <div className="form-actions">{step === 1 ? <span className="action-note"><LockKeyhole size={13} /> Your privacy comes first</span> : <button className="back-button" type="button" disabled={pending} onClick={() => router.push("/apply")}><ArrowLeft size={16} /> Back<span className="desktop-text"> to Personal Information</span></button>}<SubmitButton pending={pending}>{step === 1 ? "Continue to Employment Information" : "Submit Application"}</SubmitButton></div>
     </form>
   </article>;
+}
+
+function submissionMessage(errorId?: string) {
+  return errorId ? `We couldn't submit your application. Please try again. If this continues, contact us with error ID ${errorId}.` : "We couldn't submit your application. Please try again.";
 }
 
 function ShieldIcon() { return <LockKeyhole size={20} aria-hidden="true" />; }

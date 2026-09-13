@@ -35,11 +35,18 @@ export async function searchApplications(userId: string, filters: AdminFilters):
   return data as ApplicationSearch;
 }
 
-export async function getIdentitySummary(userId:string,id:string) {
- const {decryptSsn}=await import("./encryption");const {getServerConfig}=await import("./config");
- const {data,error}=await getServiceClient().rpc("admin_ssn_envelope",{p_user_id:userId,p_application_id:id,p_reveal:false});
- if(error || !data)return "XXXX";
- try {const c=getServerConfig();return decryptSsn(data,id,c.SSN_ENCRYPTION_KEY_BASE64,c.SSN_ENCRYPTION_KEY_ID).slice(-4);}catch{return "XXXX";}
+export async function getFullSsn(userId: string, id: string) {
+  const { decryptSsn } = await import("./encryption");
+  const { getServerConfig } = await import("./config");
+  const { data, error } = await getServiceClient().rpc("admin_ssn_envelope", {
+    p_user_id: userId,
+    p_application_id: id,
+    p_reveal: true,
+  });
+  if (error || !data) throw new Error("Unable to load sensitive identity data.");
+  const config = getServerConfig();
+  const ssn = decryptSsn(data, id, config.SSN_ENCRYPTION_KEY_BASE64, config.SSN_ENCRYPTION_KEY_ID);
+  return `${ssn.slice(0, 3)}-${ssn.slice(3, 5)}-${ssn.slice(5)}`;
 }
 export async function getApplicationActivity(userId:string,id:string) {
  const {data,error}=await getServiceClient().rpc("admin_application_activity",{p_user_id:userId,p_application_id:id});

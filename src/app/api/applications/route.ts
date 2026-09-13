@@ -6,6 +6,7 @@ import { DOCUMENT_BUCKET, getServiceClient } from "@/server/supabase";
 import { encryptSsn } from "@/server/encryption";
 import { inspectUploadedBytes } from "@/server/files";
 import { isSameOrigin } from "@/server/request";
+import { sendNewApplicationEmail } from "@/server/admin-notification-email";
 export const runtime = "nodejs"; export const maxDuration = 60;
 const error = (status = 400, errorId?: string) => NextResponse.json({ message: "We couldn't submit your application. Please try again.", ...(errorId ? { errorId } : {}) }, { status, headers: { "Cache-Control": "no-store, max-age=0" } });
 type Upload = { kind: DocumentName; objectKey: string; mimeType: string; size: number };
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   const hash=createHmac("sha256",config.SUBMISSION_HMAC_KEY).update(JSON.stringify(application));for(const doc of documents)hash.update(doc.kind).update(doc.mime).update(doc.bytes);const fingerprint=hash.digest("hex");
   stage="receipt_lookup"; const previous=await client.rpc("lookup_application_receipt",{p_id:id,p_fingerprint:fingerprint});if(previous.error)throw new Error();if(typeof previous.data==="string")return NextResponse.json({reference:previous.data},{headers:{"Cache-Control":"no-store"}});
   const {ssn,submissionId,...metadata}=application;void submissionId;const p_documents=documents.map(doc=>({kind:doc.kind,object_key:body.uploads.find(x=>x.kind===doc.kind)!.objectKey,mime_type:doc.mime,size_bytes:doc.size}));
-  stage="database_submission"; const saved=await client.rpc("submit_job_application",{p_id:id,p_fingerprint:fingerprint,p_metadata:metadata,p_ssn:encryptSsn(ssn,id,config.SSN_ENCRYPTION_KEY_BASE64,config.SSN_ENCRYPTION_KEY_ID),p_documents});if(saved.error||!saved.data?.reference)throw new Error();return NextResponse.json({reference:saved.data.reference},{headers:{"Cache-Control":"no-store"}});
+  stage="database_submission"; const saved=await client.rpc("submit_job_application",{p_id:id,p_fingerprint:fingerprint,p_metadata:metadata,p_ssn:encryptSsn(ssn,id,config.SSN_ENCRYPTION_KEY_BASE64,config.SSN_ENCRYPTION_KEY_ID),p_documents});if(saved.error||!saved.data?.reference)throw new Error();if(saved.data.created===true)await sendNewApplicationEmail(saved.data.reference);return NextResponse.json({reference:saved.data.reference},{headers:{"Cache-Control":"no-store"}});
  }catch {
   const errorId=`app-${randomUUID()}`;
   console.error(JSON.stringify({ event: "application_submission_failed", errorId, stage }));

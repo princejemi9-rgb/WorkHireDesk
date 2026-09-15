@@ -23,7 +23,7 @@ test("Postgres migrations deny applicant access, atomically persist records and 
       create policy existing_broad_policy on storage.objects for all to anon, authenticated using (true) with check (true);
     `);
     const setup = await readFile("SUPABASE_SETUP.sql", "utf8");
-    for (const migration of ["202609070001_application_intake.sql", "202609070002_document_reconciliation.sql", "202609080003_admin_portal.sql", "202609080004_admin_workflow_and_documents.sql", "202609080005_admin_provisioning.sql", "202609100006_admin_product_updates.sql", "202609100007_direct_quarantine_uploads.sql", "202609100008_validated_document_release.sql"]) {
+    for (const migration of ["202609070001_application_intake.sql", "202609070002_document_reconciliation.sql", "202609080003_admin_portal.sql", "202609080004_admin_workflow_and_documents.sql", "202609080005_admin_provisioning.sql", "202609100006_admin_product_updates.sql", "202609100007_direct_quarantine_uploads.sql", "202609100008_validated_document_release.sql", "202609150001_applicant_family_information.sql"]) {
       assert.ok(setup.includes((await readFile(`supabase/migrations/${migration}`, "utf8")).trim()), "Regenerate the setup file when a migration changes.");
     }
     await db.exec(setup);
@@ -31,7 +31,7 @@ test("Postgres migrations deny applicant access, atomically persist records and 
 
     const id = randomUUID();
     const fingerprint = "a".repeat(64);
-    const metadata = { firstName: "Test", lastName: "Applicant", dateOfBirth: "1990-01-15", address: "Test address", email: "test@example.com", phone: "2025550123", positionDesired: "Engineer", previousEmployer: "N/A", consent: true };
+    const metadata = { firstName: "Test", lastName: "Applicant", dateOfBirth: "1990-01-15", address: "Test address", email: "test@example.com", phone: "2025550123", motherFullName: "Test Mother", fatherFullName: "Test Father", placeOfBirth: "Test City, USA", motherMaidenName: "Test Maiden", positionDesired: "", previousEmployer: "", consent: true };
     const envelope = { algorithm: "aes-256-gcm", key_id: "test", nonce: "fixture", ciphertext: "fixture", tag: "fixture" };
     const docs = ["idFront", "idBack", "resume"].map(kind => ({ kind, object_key: `${id}/${randomUUID()}`, mime_type: "application/pdf", size_bytes: 100 }));
     const submit = (applicationId = id, hash = fingerprint, documents = docs) => db.query<{ receipt: { reference: string; created: boolean } }>(
@@ -44,12 +44,16 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     assert.deepEqual((await submit()).rows[0].receipt, { ...result, created: false });
     await assert.rejects(submit(id, "b".repeat(64)), /Submission conflict/);
     assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from public.job_applications")).rows[0].total, 1);
+    assert.deepEqual((await db.query("select mother_full_name, father_full_name, place_of_birth, mother_maiden_name from public.job_applications where id=$1", [id])).rows[0], { mother_full_name: "Test Mother", father_full_name: "Test Father", place_of_birth: "Test City, USA", mother_maiden_name: "Test Maiden" });
     assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from private.application_documents where scan_status = 'validated'")).rows[0].total, 3);
 
     const invalidId = randomUUID();
     const invalidDocs = docs.map(doc => ({ ...doc, object_key: `${invalidId}/${randomUUID()}`, size_bytes: 20_000_000 }));
     await assert.rejects(submit(invalidId, fingerprint, invalidDocs));
     assert.equal((await db.query<{ total: number }>("select count(*)::integer as total from public.job_applications")).rows[0].total, 1, "failed document write must roll back metadata");
+    const missingFamilyId = randomUUID();
+    const incompleteMetadata = { ...metadata, motherFullName: "" };
+    await assert.rejects(db.query("select public.submit_job_application($1::uuid,$2::text,$3::jsonb,$4::jsonb,$5::jsonb)", [missingFamilyId, fingerprint, JSON.stringify(incompleteMetadata), JSON.stringify(envelope), JSON.stringify(docs.map(doc => ({ ...doc, object_key: `${missingFamilyId}/${randomUUID()}` })))]), /Required personal information is invalid/);
 
     for (let attempt = 1; attempt <= 6; attempt++) {
       const allowed = (await db.query<{ allowed: boolean }>("select public.consume_application_rate_limit($1) as allowed", ["c".repeat(64)])).rows[0].allowed;
@@ -69,6 +73,9 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     assert.equal((await db.query<{ active: boolean }>("select active from private.admin_staff where user_id=$1", [staffId])).rows[0].active, false);
     await db.query("select public.admin_provision_staff($1, $2)", [outsider, staffId]);
     await assert.rejects(db.query("select public.admin_get_application($1,$2)", [unconfirmed, id]), /Not authorized/);
+    const detail = (await db.query<{ detail: Record<string, unknown> }>("select public.admin_get_application($1,$2) as detail", [staffId, id])).rows[0].detail;
+    assert.equal(detail.mother_full_name, "Test Mother");
+    assert.equal(detail.mother_maiden_name, "Test Maiden");
     const download = await db.query<{ path: string }>("select public.admin_get_document_for_download($1,$2,'resume') as path", [staffId, id]);
     assert.equal(download.rows[0].path, docs[2].object_key);
     await assert.rejects(db.query("select public.admin_get_document_for_download($1,$2,'resume')", [unconfirmed, id]), /Not authorized/);
@@ -79,19 +86,22 @@ test("Postgres migrations deny applicant access, atomically persist records and 
     await assert.rejects(db.query("select public.admin_update_application_status($1,$2,'closed')", [staffId, id]), /Invalid status/);
     const search = async (query: string | null, status: string | null, position: string | null = null, from: string | null = null, to: string | null = null) =>
       (await db.query<{ result: { total: number; applications: unknown[]; counts: { total: number } } }>("select public.admin_search_applications($1,$2,$3,$4,$5::date,$6::date,0) as result", [staffId, query, status, position, from, to])).rows[0].result;
-    assert.equal((await search('test@example.com', 'received', 'Engineer')).total, 1);
+    assert.equal((await search('test@example.com', 'received')).total, 1);
+    assert.deepEqual((await db.query("select position_desired, previous_employer from public.job_applications where id=$1", [id])).rows[0], { position_desired: "", previous_employer: "" });
     assert.equal((await search('no matching applicant', null)).total, 0);
     assert.equal((await search(null, 'shortlisted')).total, 0);
     assert.equal((await search(null, null, 'Different position')).total, 0);
     assert.equal((await search(null, null, null, '2000-01-01', '2001-01-01')).total, 0);
     assert.equal((await search('no match', null)).counts.total, 1, 'overview is independent of filters');
     assert.ok(!JSON.stringify((await search(null, null)).applications).includes('ssn'));
+    assert.ok(!JSON.stringify((await search(null, null)).applications).includes('mother_full_name'));
     await db.query("select public.admin_record_login($1)", [staffId]);
     assert.equal((await db.query("select * from private.admin_audit_events where action='document_download'")).rows.length, 1);
 
     const notices = await db.query<{n:{unread:number;items:unknown[]}}>("select public.admin_notifications($1) n", [staffId]);
     assert.equal(notices.rows[0].n.unread, 1);
     assert.ok(!JSON.stringify(notices.rows[0].n).includes('ssn'));
+    assert.ok(!JSON.stringify(notices.rows[0].n).includes('mother_full_name'));
     await db.query("select public.admin_read_notifications($1,$2)",[staffId,id]);
     assert.equal((await db.query<{n:{unread:number}}>("select public.admin_notifications($1) n",[staffId])).rows[0].n.unread,0);
     await assert.rejects(db.query("select public.admin_ssn_envelope($1,$2,true)",[unconfirmed,id]),/Not authorized/);

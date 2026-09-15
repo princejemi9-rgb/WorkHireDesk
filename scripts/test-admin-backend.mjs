@@ -8,7 +8,7 @@ const ciphertext=Buffer.concat([cipher.update('123456789'),cipher.final()]).toSt
 const envelope={algorithm:'aes-256-gcm',key_id:'test-v1',nonce:nonce.toString('base64'),ciphertext,tag:cipher.getAuthTag().toString('base64')};
 let read=false;
 const activity=[{staff_user_id:staff,action:'view_application',created_at:application.created_at}];
-const application={id,reference_code:'WHD-1234ABCD',first_name:'Synthetic',last_name:'Applicant',email:'synthetic@example.com',phone:'2025550123',date_of_birth:'1990-01-15',address:'Synthetic address',position_desired:'Engineer',previous_employer:'N/A',status:'received',created_at:'2026-09-10T10:00:00Z',consent_timestamp:'2026-09-10T10:00:00Z',document_count:4,documents:[{kind:'idFront'},{kind:'idBack'},{kind:'resume'},{kind:'taxDocument'}]};
+const application={id,reference_code:'WHD-1234ABCD',first_name:'Synthetic',last_name:'Applicant',email:'synthetic@example.com',phone:'2025550123',date_of_birth:'1990-01-15',address:'Synthetic address',mother_full_name:'Test Mother',father_full_name:'Test Father',place_of_birth:'Test City, USA',mother_maiden_name:'Test Maiden',position_desired:'Engineer',previous_employer:'N/A',status:'received',created_at:'2026-09-10T10:00:00Z',consent_timestamp:'2026-09-10T10:00:00Z',document_count:4,documents:[{kind:'idFront'},{kind:'idBack'},{kind:'resume'},{kind:'taxDocument'}]};
 createServer(async(req,res)=>{
  let raw='';for await(const c of req)raw+=c;const body=raw?JSON.parse(raw):{};
  res.setHeader('Content-Type','application/json');

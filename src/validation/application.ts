@@ -20,6 +20,10 @@ export const personalSchema = z.object({
   address: text("Residential address", 300),
   email: z.email("Enter a valid email address.").max(254),
   phone: z.string().trim().max(30).refine(v => /^(1)?[2-9]\d{2}[2-9]\d{6}$/.test(v.replace(/[\s()+.-]/g, "")), "Enter a valid U.S. phone number."),
+  motherFullName: text("Mother's full name", 150),
+  fatherFullName: text("Father's full name", 150),
+  placeOfBirth: text("Place of birth", 150),
+  motherMaidenName: text("Mother's maiden name", 150),
   ssn: z.string().regex(/^\d{3}-?\d{2}-?\d{4}$/, "Enter a 9-digit Social Security Number.").refine(v => {
     const digits = v.replace(/-/g, "");
     return !/^(000|666|9\d\d)/.test(digits) && digits.slice(3, 5) !== "00" && digits.slice(5) !== "0000";

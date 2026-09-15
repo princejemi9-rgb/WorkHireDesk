@@ -6,10 +6,10 @@ import { encryptSsn, decryptSsn } from "../src/server/encryption";
 import { inspectFile } from "../src/server/files";
 import { isSameOrigin } from "../src/server/request";
 
-const personal = { firstName: "Test", lastName: "Applicant", dateOfBirth: "1990-01-15", address: "Synthetic test address", email: "applicant@example.com", phone: "(202) 555-0123", ssn: "123-45-6789", consent: true };
+const personal = { firstName: "Test", lastName: "Applicant", dateOfBirth: "1990-01-15", address: "Synthetic test address", email: "applicant@example.com", phone: "(202) 555-0123", motherFullName: "Test Mother", fatherFullName: "Test Father", placeOfBirth: "Test City, USA", motherMaidenName: "Test Maiden", ssn: "123-45-6789", consent: true };
 test("shared schemas reject invalid dates, consent, contact details and SSNs", () => {
   assert.equal(personalSchema.safeParse(personal).success, true);
-  for (const changes of [{ dateOfBirth: "2025-02-30" }, { dateOfBirth: "2999-01-01" }, { consent: false }, { email: "invalid" }, { phone: "0000000000" }, { ssn: "000-45-6789" }, { ssn: "123-00-6789" }, { ssn: "900-45-6789" }, { firstName: "   " }]) {
+  for (const changes of [{ dateOfBirth: "2025-02-30" }, { dateOfBirth: "2999-01-01" }, { consent: false }, { email: "invalid" }, { phone: "0000000000" }, { ssn: "000-45-6789" }, { ssn: "123-00-6789" }, { ssn: "900-45-6789" }, { firstName: "   " }, { motherFullName: "" }, { fatherFullName: "   " }, { placeOfBirth: "x".repeat(151) }, { motherMaidenName: "Test\u0000Name" }]) {
     assert.equal(personalSchema.safeParse({ ...personal, ...changes }).success, false);
   }
   assert.equal(employmentSchema.safeParse({ positionDesired: "Engineer", previousEmployer: "N/A" }).success, true);

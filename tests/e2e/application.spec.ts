@@ -11,6 +11,10 @@ test("validates, preserves both steps, handles a server error, and clears sensit
   await page.getByLabel("Phone Number").fill("2025550123");
   await page.getByLabel("Email Address").fill("test@example.com");
   await page.getByLabel("Residential Address").fill("Synthetic test address");
+  await page.getByLabel("Place of Birth").fill("Test City, USA");
+  await page.getByLabel("Mother's Full Name").fill("Test Mother");
+  await page.getByLabel("Father's Full Name").fill("Test Father");
+  await page.getByLabel("Mother's Maiden Name").fill("Test Maiden");
   await page.getByLabel("Social Security Number").fill("123456789");
   await expect(page.getByLabel("Social Security Number")).toHaveAttribute("type", "password");
   await page.locator("#idFront").setInputFiles(pdf);
@@ -32,8 +36,8 @@ test("validates, preserves both steps, handles a server error, and clears sensit
   await page.route("**/api/applications**", async route => {
     if (new URL(route.request().url()).pathname === "/api/applications/uploads") {
       return route.fulfill({ json: { uploads: [
-        { kind: "idFront", objectKey: "synthetic/id-front", uploadUrl: "http://localhost:3000/signed-upload/id-front", mimeType: "application/pdf", size: pdf.buffer.length },
-        { kind: "idBack", objectKey: "synthetic/id-back", uploadUrl: "http://localhost:3000/signed-upload/id-back", mimeType: "application/pdf", size: pdf.buffer.length },
+        { kind: "idFront", objectKey: "synthetic/id-front", uploadUrl: "/signed-upload/id-front", mimeType: "application/pdf", size: pdf.buffer.length },
+        { kind: "idBack", objectKey: "synthetic/id-back", uploadUrl: "/signed-upload/id-back", mimeType: "application/pdf", size: pdf.buffer.length },
       ] } });
     }
     requests++;

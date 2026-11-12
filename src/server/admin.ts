@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export type ApplicationStatus = "received" | "reviewing" | "shortlisted" | "rejected";
 export type AdminApplication = { id: string; reference_code: string; first_name: string; last_name: string; email: string; position_desired: string; status: ApplicationStatus; created_at: string; document_count: number };
-export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; mother_full_name: string | null; father_full_name: string | null; place_of_birth: string | null; mother_maiden_name: string | null; previous_employer: string; consent_timestamp: string; documents: { kind: string; created_at: string }[] };
+export type AdminApplicationDetail = AdminApplication & { date_of_birth: string; address: string; phone: string; previous_employer: string; consent_timestamp: string; documents: { kind: string; created_at: string }[] };
 
 export async function requireAdmin() {
   const session = await getAdminSession(); if (!session) redirect("/admin/login");

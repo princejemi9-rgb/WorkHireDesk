@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { ApplicationValues, DocumentName } from "@/validation/application";
 
-const emptyValues: ApplicationValues = { firstName: "", lastName: "", dateOfBirth: "", address: "", email: "", phone: "", motherFullName: "", fatherFullName: "", placeOfBirth: "", motherMaidenName: "", ssn: "", consent: false, positionDesired: "", previousEmployer: "" };
+const emptyValues: ApplicationValues = { firstName: "", lastName: "", dateOfBirth: "", address: "", email: "", phone: "", ssn: "", consent: false, positionDesired: "", previousEmployer: "" };
 function useApplicationState() {
   const [values, setValues] = useState<ApplicationValues>(emptyValues);
   const [files, setFiles] = useState<Partial<Record<DocumentName, File>>>({});

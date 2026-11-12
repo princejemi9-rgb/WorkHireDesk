@@ -106,10 +106,6 @@ export function ApplicationForm({ step }: { step: 1 | 2 }) {
             {field("lastName", "Last Name", { placeholder: "Last name", autoComplete: "family-name", maxLength: "100" })}
             {field("dateOfBirth", "Date of Birth", { type: "date", autoComplete: "bday", max: new Date().toISOString().slice(0, 10) })}
             {field("phone", "Phone Number", { type: "tel", placeholder: "(555) 555-0123", autoComplete: "tel", maxLength: "30" })}
-            {field("placeOfBirth", "Place of Birth", { placeholder: "City, state, and country", autoComplete: "off", maxLength: "150" })}
-            {field("motherFullName", "Mother's Full Name", { placeholder: "Mother's full legal name", autoComplete: "off", maxLength: "150" })}
-            {field("fatherFullName", "Father's Full Name", { placeholder: "Father's full legal name", autoComplete: "off", maxLength: "150" })}
-            {field("motherMaidenName", "Mother's Maiden Name", { placeholder: "Mother's surname at birth", autoComplete: "off", maxLength: "150" })}
             <div className="span-two">{field("email", "Email Address", { type: "email", placeholder: "you@example.com", autoComplete: "email", maxLength: "254" })}</div>
             <div className="span-two">{field("address", "Residential Address", { placeholder: "Street address, apartment, city, state and ZIP code", autoComplete: "street-address", maxLength: "300" })}</div>
           </div>
